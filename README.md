@@ -19,7 +19,7 @@ University of South Carolina <br />
 * [Installation](#installation)
 * [Data](#data)
 * [Usage](#usage)
-* [References](#reference)
+* [References](#references)
 
 
 <a name="how-to-cite"></a>
