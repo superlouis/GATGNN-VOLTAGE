@@ -11,6 +11,80 @@ from torch_geometric.nn       import global_add_pool
 from torch_geometric.nn.inits import glorot, zeros
 torch.cuda.empty_cache()
 
+
+class GAT_Crystal(MessagePassing):
+    def __init__(self, in_channels, out_channels, edge_dim,heads, concat=False,
+                 dropout=0, bias=True, **kwargs):
+        super(GAT_Crystal, self).__init__(aggr='add',flow='target_to_source', **kwargs)
+        self.in_channels       = in_channels
+        self.out_channels      = out_channels
+        self.heads             = heads
+        self.concat            = concat
+        self.dropout           = dropout
+        self.neg_slope         = 0.2
+        self.prelu             = nn.PReLU()
+        self.bn1               = nn.BatchNorm1d(heads)
+        self.bn2               = nn.BatchNorm1d(heads)
+        self.W                 = Parameter(torch.Tensor(in_channels+edge_dim,heads*out_channels))
+        self.att               = Parameter(torch.Tensor(1,heads,2*out_channels))
+
+        if bias and concat       : self.bias = Parameter(torch.Tensor(heads * out_channels))
+        elif bias and not concat : self.bias = Parameter(torch.Tensor(out_channels))
+        else                     : self.register_parameter('bias', None)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        glorot(self.W)
+        glorot(self.att)
+        zeros(self.bias)
+
+    def forward(self, x, edge_index, edge_attr):
+        return self.propagate(edge_index, x=x,edge_attr=edge_attr)
+
+    def message(self, edge_index_i, x_i, x_j, size_i,edge_attr): 
+        x_i   = torch.cat([x_i,edge_attr],dim=-1)
+        x_j   = torch.cat([x_j,edge_attr],dim=-1)
+        
+        x_i   = F.softplus(torch.matmul(x_i,self.W))
+        x_j   = F.softplus(torch.matmul(x_j,self.W))
+        x_i   = x_i.view(-1, self.heads, self.out_channels)
+        x_j   = x_j.view(-1, self.heads, self.out_channels)
+
+        alpha = F.leaky_relu((torch.cat([x_i, x_j], dim=-1)*self.att).sum(dim=-1),0.1)
+        alpha = F.leaky_relu(self.bn2(alpha),0.1)
+        alpha = softmax(alpha, edge_index_i, size_i)
+
+        alpha = F.dropout(alpha, p=self.dropout, training=self.training)
+        return x_j * alpha.view(-1, self.heads, 1)
+
+    def update(self, aggr_out,x):
+        if self.concat is True:    aggr_out = aggr_out.view(-1, self.heads * self.out_channels)
+        else:                      aggr_out = aggr_out.mean(dim=1)
+        if self.bias is not None:  aggr_out = aggr_out + self.bias
+        return aggr_out
+
+class COMPOSITION_Attention(torch.nn.Module):
+    def __init__(self,neurons):
+        '''
+        Global-Attention Mechanism based on the crystal's elemental composition
+        > Defined in paper as *GI-M1*
+        =======================================================================
+        neurons : number of neurons to use 
+        '''
+        super(COMPOSITION_Attention, self).__init__()
+        self.node_layer1    = Linear(neurons+103,32)
+        self.atten_layer    = Linear(32,1)
+
+    def forward(self,x,batch,global_feat):
+        counts      = torch.unique(batch,return_counts=True)[-1]
+        graph_embed = global_feat
+        graph_embed = torch.repeat_interleave(graph_embed, counts, dim=0)
+        chunk       = torch.cat([x,graph_embed],dim=-1)
+        x           = F.softplus(self.node_layer1(chunk))
+        x           = self.atten_layer(x)
+        weights     = softmax(x,batch)
+        return weights
+
 class GATGNN_R(torch.nn.Module):
     def __init__(self,heads,classification=None,neurons=64,nl=3,xtra_layers=True,global_attention='composition',
                  unpooling_technique='random',concat_comp=False,edge_format='CGCNN'):
