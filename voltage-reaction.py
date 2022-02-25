@@ -16,7 +16,6 @@ parser.add_argument('--train_size',default=0.8, type=float,
 parser.add_argument('--batch',default=128, type=int,
                     help='batch size to use within experinment  (default:128)')
 
-
 # MODEL PARAMETERS
 parser.add_argument('--layers',default=3, type=int,
                     help='number of AGAT layers to use in model (default:3)')
@@ -140,26 +139,40 @@ elif args.mode == 'evaluation':
     _, _, out_labels  = evaluate(model,test_loader1,test_loader2,metrics, device, with_labels=True)
 
 
-        # DENORMALIZING LABEL
+    # DENORMALIZING LABEL
     out_labels             = [torch.cat(x,-1) for x in out_labels]
     true_label, pred_label = out_labels
-    error2                 = torch_MAE(true_label, pred_label)
+    # error2                 = torch_MAE(true_label, pred_label)
 
-    # true_label, pred_label = NORMALIZER.denorm(true_label), NORMALIZER.denorm(pred_label)       
+    true_label, pred_label = NORMALIZER.denorm(true_label), NORMALIZER.denorm(pred_label)       
     true_label, pred_label =  true_label.cpu().numpy(), pred_label.cpu().numpy()
 
-    # error2                 = MAE(true_label, pred_label)
-    sns.regplot(true_label, pred_label,color='green')
+    error2                 = MAE(true_label, pred_label)
 
+    # SAVING PLOTS
+    sns.regplot(true_label, pred_label,color='green')
     plt.title(f'MAE:{error2:.3f}')
     plt.xlabel(f'True avg-voltage')
     plt.ylabel(f'Predicted avg-voltage')
     plt.savefig('RESULTS/average--voltage.png')
 
+
+    # WRITING RESULTS TO FILE
+    with open('RESULTS/voltage--prediction.csv','w') as outfile:
+        outfile.write("low_mpid,high_mpid,avg_voltage,pred_voltage\n")
+        counter = 0
+        for idx in test_idx:
+            low_mpid,high_mpid,_,_ = CRYSTAL_DATA.full_data.iloc[idx]
+            pred    = pred_label[counter]
+            newline = f'{low_mpid},{high_mpid},{true_label[counter]:.3f},{pred:.3f}\n'
+            outfile.write(newline)
+            counter+=1
+    outdf = pd.read_csv('RESULTS/voltage--prediction.csv').sort_values(by=['avg_voltage'])
+    print(outdf)    
+
 elif args.mode == 'cross-validation':
     pass
-else:
-    pass 
+
 
 
 
