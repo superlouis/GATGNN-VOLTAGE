@@ -11,25 +11,35 @@ from torch_geometric.nn       import global_add_pool
 from torch_geometric.nn.inits import glorot, zeros
 torch.cuda.empty_cache()
 
-
 class GAT_Crystal(MessagePassing):
-    def __init__(self, in_channels, out_channels, edge_dim,heads, concat=False,
+    def __init__(self, in_features, out_features, edge_dim, heads, concat=False,
                  dropout=0, bias=True, **kwargs):
+        '''
+        Our Augmented Graph Attention Layer
+        > Defined in paper as *AGAT*
+        =======================================================================
+        in_features    : input-features
+        out_features   : output-features
+        edge_dim       : edge-features
+        heads          : attention-heads
+        concat         : to concatenate the attention-heads or sum them
+        dropout        : 0
+        bias           : True
+        '''    
         super(GAT_Crystal, self).__init__(aggr='add',flow='target_to_source', **kwargs)
-        self.in_channels       = in_channels
-        self.out_channels      = out_channels
+        self.in_features       = in_features
+        self.out_features      = out_features
         self.heads             = heads
         self.concat            = concat
         self.dropout           = dropout
         self.neg_slope         = 0.2
         self.prelu             = nn.PReLU()
         self.bn1               = nn.BatchNorm1d(heads)
-        self.bn2               = nn.BatchNorm1d(heads)
-        self.W                 = Parameter(torch.Tensor(in_channels+edge_dim,heads*out_channels))
-        self.att               = Parameter(torch.Tensor(1,heads,2*out_channels))
+        self.W                 = Parameter(torch.Tensor(in_features+edge_dim,heads*out_features))
+        self.att               = Parameter(torch.Tensor(1,heads,2*out_features))
 
-        if bias and concat       : self.bias = Parameter(torch.Tensor(heads * out_channels))
-        elif bias and not concat : self.bias = Parameter(torch.Tensor(out_channels))
+        if bias and concat       : self.bias = Parameter(torch.Tensor(heads * out_features))
+        elif bias and not concat : self.bias = Parameter(torch.Tensor(out_features))
         else                     : self.register_parameter('bias', None)
         self.reset_parameters()
 
@@ -47,19 +57,20 @@ class GAT_Crystal(MessagePassing):
         
         x_i   = F.softplus(torch.matmul(x_i,self.W))
         x_j   = F.softplus(torch.matmul(x_j,self.W))
-        x_i   = x_i.view(-1, self.heads, self.out_channels)
-        x_j   = x_j.view(-1, self.heads, self.out_channels)
+        x_i   = x_i.view(-1, self.heads, self.out_features)
+        x_j   = x_j.view(-1, self.heads, self.out_features)
 
-        alpha = F.leaky_relu((torch.cat([x_i, x_j], dim=-1)*self.att).sum(dim=-1),0.1)
-        alpha = F.leaky_relu(self.bn2(alpha),0.1)
-        alpha = softmax(alpha, edge_index_i, size_i)
+        alpha = F.softplus((torch.cat([x_i, x_j], dim=-1)*self.att).sum(dim=-1))
+        alpha = F.softplus(self.bn1(alpha))
+        alpha = softmax(alpha,edge_index_i)
 
         alpha = F.dropout(alpha, p=self.dropout, training=self.training)
-        return x_j * alpha.view(-1, self.heads, 1)
+        x_j   = (x_j * alpha.view(-1, self.heads, 1)).transpose(0,1)
+        return x_j
 
     def update(self, aggr_out,x):
-        if self.concat is True:    aggr_out = aggr_out.view(-1, self.heads * self.out_channels)
-        else:                      aggr_out = aggr_out.mean(dim=1)
+        if self.concat is True:    aggr_out = aggr_out.view(-1, self.heads * self.out_features)
+        else:                      aggr_out = aggr_out.mean(dim=0)
         if self.bias is not None:  aggr_out = aggr_out + self.bias
         return aggr_out
 
@@ -86,14 +97,11 @@ class COMPOSITION_Attention(torch.nn.Module):
         return weights
 
 class GATGNN_R(torch.nn.Module):
-    def __init__(self,heads,classification=None,neurons=64,nl=3,xtra_layers=True,global_attention='composition',
-                 unpooling_technique='random',concat_comp=False,edge_format='CGCNN'):
+    def __init__(self,heads,neurons=64,nl=3,xtra_layers=True
+                     , concat_comp=False,neighborHood='small'):
         super(GATGNN_R, self).__init__()
 
         self.n_heads        = heads
-        self.classification = True if classification != None else False 
-        self.unpooling      = unpooling_technique
-        self.g_a            = global_attention
         self.number_layers  = nl
         self.concat_comp    = concat_comp
         self.additional     = xtra_layers   
@@ -103,7 +111,7 @@ class GATGNN_R(torch.nn.Module):
         self.neg_slope      = 0.2  
 
         self.embed_n        = Linear(92,n_h)
-        self.embed_e        = Linear(41,n_h) if edge_format in ['CGCNN','NEW'] else Linear(9,n_h)
+        self.embed_e        = Linear(41,n_h) if neighborHood == 'small' else Linear(9,n_h)
         self.embed_comp     = Linear(103,n_h)
  
         self.node_att       = nn.ModuleList([GAT_Crystal(n_h,n_h,n_h,self.n_heads) for i in range(nl)])
@@ -117,9 +125,6 @@ class GATGNN_R(torch.nn.Module):
         if self.additional:
             self.linear1    = nn.Linear(reg_h,reg_h)
             self.linear2    = nn.Linear(reg_h,reg_h)
-
-        if self.classification :    self.out  =  Linear(reg_h,2)
-        else:                       self.out  =  Linear(reg_h,1)
 
     def forward(self,x, edge_index, edge_attr,batch, global_feat,cluster):
         x           = self.embed_n(x)

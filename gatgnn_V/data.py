@@ -75,9 +75,7 @@ class DATA_normalizer:
         
     def reg(self,x):
         return x.float()
-    
-        self.mean   = torch.mean(tensor)
-        self.std    = torch.std(tensor)
+
     def reg(self,x):
         return x.float()
 
@@ -100,7 +98,7 @@ class DATA_normalizer:
         return x*self.range + self.min
 
 class METRICS:
-    def __init__(self,c_property,epoch,torch_criterion,torch_func,device):
+    def __init__(self,c_property,torch_criterion,torch_func,device):
         self.c_property        = c_property
         self.criterion         = torch_criterion
         self.eval_func         = torch_func
@@ -259,7 +257,7 @@ class CIF_Lister(Dataset):
         def organizeDATA(material):
             n_features    = material[0][0]
             e_features    = material[0][1]
-            e_features    = e_features.view(-1,41) if self.src in ['CGCNN','NEW'] else e_features.view(-1,9)
+            e_features    = e_features.view(-1,41) if self.src =='small' else e_features.view(-1,9)
             a_matrix      = material[0][2]
 
             groups        = material[1]
