@@ -7,31 +7,25 @@ Please read our paper for the detailed implementation of GATGNN-VOLTAGE:
 
 [Accurate Prediction of Voltage of Battery Electrode Materials using Attention based Graph Neural Networks](https://chemrxiv.org/engage/chemrxiv/article-details/6106efa9171fc75328ba29d0)
 
-![GATGNN-VOLTAGE](/assets/imgs/GATGNN-Voltage.png)
-
+<p align="center">
+<img src="/assets/imgs/GATGNN-Voltage.png" alt="GATGNN-VOLTAGE" width="400"/>
+</p>
 
 [Machine Learning and Evolution Laboratory](http://mleg.cse.sc.edu)<br />
 Department of Computer Science and Engineering <br />
 University of South Carolina <br />
 
 # Table of Contents
-* [How to cite](#how-to-cite)
 * [Installation](#installation)
 * [Data](#data)
 * [Usage](#usage)
+* [How to cite](#how-to-cite)
 * [References](#references)
-
-
-<a name="how-to-cite"></a>
-## How to cite:<br />
-```
-Louis, S. Y., Siriwardane, E., Joshi, R., Omee, S., Kumar, N., & Hu, J. (2022). Accurate Prediction of Voltage of Battery Electrode Materials Using Attention Based Graph Neural Networks.
-```
 
 <a name="installation"></a>
 ## Installation
 1. Inside of your Python environemnt, install the basic dependencies required for GATGNN-VOLTAGE by running code below:
-```
+```bash
 pip install -r requirements.txt
 ```
 2. Follow the instructions listed on [Pytorch-Geometric's documentations](https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html#installation) to install pytorch-geometric for using Graph Neural Network. 
@@ -39,32 +33,82 @@ pip install -r requirements.txt
 <a name="data"></a>
 ## Data
 To obtain the dataset, run the `get_data.py` file.
-```
+```bash
 python get_data.py
 ```
 <a name="usage"></a>
 ## Usage
 
 ### Reaction based voltage
-For the reaction based voltage, run the `voltage-reaction.py` file. There are 3 available modes which can be accessed using the `--mode` flag
+For the reaction based voltage, run the `voltage-reaction.py` file. The 3 running options (evaluation, training, cross-validation or CV) can be set by using the `--mode` flag
 
-1. _evaluation_: for evaluating the performance of a trained model. 
-```
+#### evaluation   
+
+- **Details**
+
+for evaluating the performance of the trained reaction-model. Running this mode predicts voltage of electrodes from the testing-set and saves the results to `RESULTS/voltage--prediction.csv`.
+
+- **Usage example:**
+```bash
 python voltage-reaction.py --mode evaluation
 ```
-2. _training_: for training a new reaction-based model.
-```
+--- 
+
+#### training
+
+- **Details**
+
+for training a new reaction-based model. 
+
+- **Optional arguments**
+
+| Parameter                 | Default       | Description   |	
+| :------------------------ |:-------------:| :-------------|
+| --train_size	       |	0.8          |ratio size of the training-set
+| --batch             | 128          | batch size to use within experinment 
+| --graph_size        | small        |graph encoding format by neighborhood size, either 12 (small) or 16 (large)
+| --layers            | 3            |number of AGAT layers to use in model (default:3)
+| --neurons           | 64           |number of neurons to use per AGAT Layer
+| --heads             | 4            |number of Attention-Heads to use  per AGAT Layer
+
+- **Usage example:**
+
+```bash
 python voltage-reaction.py --mode training
 ```
-3. cross-validation or CV:
-```
+--- 
+
+#### cross-validation or CV:
+- **Details**
+
+for running a k-fold cross-validation training/ evaluation method
+
+- **Optional arguments**
+
+| Parameter                 | Default       | Description   |	
+| :------------------------ |:-------------:| :-------------|
+| --fold              | 10           | number of folds 
+| --train_size	       |	0.8          |ratio size of the training-set
+| --batch             | 128          | batch size to use within experinment 
+| --graph_size        | small        |graph encoding format by neighborhood size, either 12 (small) or 16 (large)
+| --layers            | 3            |number of AGAT layers to use in model (default:3)
+| --neurons           | 64           |number of neurons to use per AGAT Layer
+| --heads             | 4            |number of Attention-Heads to use  per AGAT Layer
+
+- **Usage example:**
+
+```bash
 python voltage-reaction.py --mode cross-validation
 ```
- Using the appropriate `--mode` flag, you can run 
-
-
 
 ### Formation-energy based voltage
+#### Upcoming soon
+
+<a name="how-to-cite"></a>
+## How to cite:<br />
+```
+Louis, S. Y., Siriwardane, E., Joshi, R., Omee, S., Kumar, N., & Hu, J. (2022). Accurate Prediction of Voltage of Battery Electrode Materials Using Attention Based Graph Neural Networks.
+```
 
 <a name="references"></a>
 ## References
