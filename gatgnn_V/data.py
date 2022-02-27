@@ -216,8 +216,6 @@ class AtomInitializer(object):
 
 class AtomCustomJSONInitializer(AtomInitializer):
     def __init__(self, elem_embedding_file):
-        print('----------------------------------')
-        print(elem_embedding_file)
 
         with open(elem_embedding_file) as f:
             elem_embedding = json.load(f)

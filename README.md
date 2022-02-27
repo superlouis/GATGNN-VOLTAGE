@@ -30,12 +30,41 @@ Louis, S. Y., Siriwardane, E., Joshi, R., Omee, S., Kumar, N., & Hu, J. (2022). 
 
 <a name="installation"></a>
 ## Installation
+1. Inside of your Python environemnt, install the basic dependencies required for GATGNN-VOLTAGE by running code below:
+```
+pip install -r requirements.txt
+```
+2. Follow the instructions listed on [Pytorch-Geometric's documentations](https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html#installation) to install pytorch-geometric for using Graph Neural Network. 
 
 <a name="data"></a>
 ## Data
-
+To obtain the dataset, run the `get_data.py` file.
+```
+python get_data.py
+```
 <a name="usage"></a>
 ## Usage
+
+### Reaction based voltage
+For the reaction based voltage, run the `voltage-reaction.py` file. There are 3 available modes which can be accessed using the `--mode` flag
+
+1. _evaluation_: for evaluating the performance of a trained model. 
+```
+python voltage-reaction.py --mode evaluation
+```
+2. _training_: for training a new reaction-based model.
+```
+python voltage-reaction.py --mode training
+```
+3. cross-validation or CV:
+```
+python voltage-reaction.py --mode cross-validation
+```
+ Using the appropriate `--mode` flag, you can run 
+
+
+
+### Formation-energy based voltage
 
 <a name="references"></a>
 ## References

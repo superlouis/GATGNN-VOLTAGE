@@ -9,16 +9,34 @@ from sklearn.metrics import mean_squared_error as MSE
 from sklearn.metrics import mean_absolute_error as MAE
 from sklearn.preprocessing import LabelBinarizer
 import argparse
-
+from sklearn.model_selection import KFold
 from   sklearn.model_selection import train_test_split
 from   sklearn.metrics import mean_absolute_error as sk_MAE
 from   tabulate import tabulate
 import random,time
 import torch, seaborn as sns
 
-def k_fold_split(k, idx_array):
-    some_arr = np.array_split(idx_array,k)
-    return some_arr
+
+
+def parity_plot(true_label, pred_label,error2):
+    sns.regplot(true_label, pred_label,color='green')
+    plt.title(f'MAE:{error2:.3f}')
+    plt.xlabel(f'True avg-voltage')
+    plt.ylabel(f'Predicted avg-voltage')
+    plt.savefig('RESULTS/average--voltage.png')
+
+def save_results_to_file(test_idx, CRYSTAL_DATA, pred_label, true_label, idx_k_fold=''):
+    with open(f'RESULTS/{idx_k_fold}voltage--prediction.csv','w') as outfile:
+        outfile.write("low_mpid,high_mpid,avg_voltage,pred_voltage\n")
+        counter = 0
+        for idx in test_idx:
+            low_mpid,high_mpid,_,_ = CRYSTAL_DATA.full_data.iloc[idx]
+            pred    = pred_label[counter]
+            newline = f'{low_mpid},{high_mpid},{true_label[counter]:.3f},{pred:.3f}\n'
+            outfile.write(newline)
+            counter+=1
+    outdf = pd.read_csv(f'RESULTS/{idx_k_fold}voltage--prediction.csv').sort_values(by=['avg_voltage'])
+    print(outdf)   
 
 def get_dataset(src_folder):
     cifs     = [x for x in os.listdir(src_folder) if x.endswith('.cif')]
