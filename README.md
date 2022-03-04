@@ -46,7 +46,7 @@ For the reaction based voltage, run the `voltage-reaction.py` file. The 3 runnin
 
 - **Details**
 
-for evaluating the performance of the trained reaction-model. Running this mode predicts voltage of electrodes from the testing-set and saves the results to `RESULTS/voltage--prediction.csv`.
+for evaluating the performance of the trained reaction-model. Running this mode predicts voltage of electrodes from the testing-set and saves those results to `RESULTS/voltage--prediction.csv`.
 
 - **Usage example:**
 ```bash
@@ -81,7 +81,7 @@ python voltage-reaction.py --mode training
 #### cross-validation or CV:
 - **Details**
 
-for running a k-fold cross-validation training/ evaluation method
+for running a k-fold cross-validation training/ evaluation method. Running this mode creates `k` different prediction-results which are saved to `RESULTS/{k}-voltage--prediction.csv`; where `k` corresponds to the cross-validation iteration.
 
 - **Optional arguments**
 

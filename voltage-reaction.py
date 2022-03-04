@@ -17,6 +17,7 @@ parser.add_argument('--batch',default=128, type=int,
                     help='batch size to use within experinment  (default:128)')
 parser.add_argument('--fold',default=10, type=int,
                     help='number of folds to set when using cross-validation mode (default:20)')
+
 # MODEL PARAMETERS
 parser.add_argument('--layers',default=3, type=int,
                     help='number of AGAT layers to use in model (default:3)')
@@ -24,7 +25,7 @@ parser.add_argument('--neurons',default=64, type=int,
                     help='number of neurons to use per AGAT Layer(default:64)')
 parser.add_argument('--heads',default=4, type=int,
                     help='number of Attention-Heads to use  per AGAT Layer (default:4)')
-
+parser.add_argument('--custom', action='store_false', help ='use custom reaction-voltage trained model')
 
 args     = parser.parse_args(sys.argv[1:])
 
@@ -35,16 +36,16 @@ early_stopping = EarlyStopping(patience=100, increment=1e-6,verbose=True)
 random_num  = 456;random.seed(random_num);np.random.seed(random_num) 
 gpu_id      = 0
 device      = torch.device(f'cuda:{gpu_id}' if torch.cuda.is_available() else 'cpu')
-criterion   = nn.SmoothL1Loss().to(device)    ; funct = torch_MAE
+criterion   = nn.HuberLoss().to(device)    ; funct = torch_MAE
 metrics     = METRICS('voltage',criterion,funct,device)
-num_epochs  = 300
+num_epochs  = 1000
 lr          = 5e-3
 train_param = {'batch_size':args.batch, 'shuffle': True}
 valid_param = {'batch_size':args.batch, 'shuffle': False}
 
 # DATA
-src_CIFS   = 'DATA/CIFS-R/'
-df         = get_dataset(src_CIFS).sample(frac=0.2)
+src_CIFS   = 'DATA/CIFS/CIFS-R/'
+df         = get_dataset(src_CIFS)#.sample(frac=0.2)
 idx_list   = list(range(len(df)))
 random.shuffle(idx_list)
 NORMALIZER = DATA_normalizer(df.avg_voltage.values)
@@ -55,7 +56,7 @@ if args.graph_size   == 'small':
     RSM         = {'radius':8,'step':0.2,'max_num_nbr':12}
 else:
     RSM         = {'radius':4,'step':0.5,'max_num_nbr':16}
-CRYSTAL_DATA    = CIF_Dataset(df,**RSM)
+CRYSTAL_DATA    = CIF_Dataset(df,root_dir= src_CIFS,**RSM)
 
 # NEURAL-NETWORK
 if args.mode in ['training','evaluation']:
@@ -117,19 +118,22 @@ if  args.mode  == 'training':
             break
     # SAVING MODEL
     print(f"> DONE TRAINING !")
-    shutil.copy2('MODEL/crystal-checkpoint.pt', f'MODEL/voltage-checkpoint.pt')
+    shutil.copy2(f'MODEL/voltage-checkpoint.pt','MODEL/custom-checkpoint.pt')
 
 
 elif args.mode == 'evaluation':
     model.eval()
-    model.load_state_dict(torch.load(f'MODEL/voltage-checkpoint.pt',map_location=device))
+    if args.custom:
+        model.load_state_dict(torch.load(f'MODEL/custom-checkpoint.pt',map_location=device))
+    else:
+        model.load_state_dict(torch.load(f'MODEL/avg-voltage.pt',map_location=device))        
     valid_param        = {'batch_size':args.batch, 'shuffle': False}
 
     _        ,test_val = train_test_split(idx_list,train_size=args.train_size,random_state=random_num)
     test_idx, _        = train_test_split(test_val,test_size=0.5,random_state=random_num)
 
-    testing_set1 = CIF_Lister(test_idx,CRYSTAL_DATA,NORMALIZER,norm, df=df,src=args.graph_size)
-    testing_set2 = CIF_Lister(test_idx,CRYSTAL_DATA,NORMALIZER,norm, df=df,src=args.graph_size,id_01=1)
+    testing_set1  = CIF_Lister(test_idx,CRYSTAL_DATA,NORMALIZER,norm, df=df,src=args.graph_size)
+    testing_set2  = CIF_Lister(test_idx,CRYSTAL_DATA,NORMALIZER,norm, df=df,src=args.graph_size,id_01=1)
 
     test_loader1  = torch_DataLoader(dataset=testing_set1,   **valid_param)
     test_loader2  = torch_DataLoader(dataset=testing_set2,   **valid_param)
