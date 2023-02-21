@@ -5,7 +5,7 @@ This software package implements our work of GATGNN-VOLTAGE for the problem volt
 
 Please read our paper for the detailed implementation of GATGNN-VOLTAGE:
 
-[Accurate Prediction of Voltage of Battery Electrode Materials using Attention based Graph Neural Networks](https://chemrxiv.org/engage/chemrxiv/article-details/6106efa9171fc75328ba29d0)
+[Accurate Prediction of Voltage of Battery Electrode Materials using Attention based Graph Neural Networks](https://pubs.acs.org/doi/full/10.1021/acsami.2c00029)
 
 <p align="center">
 <img src="/assets/imgs/GATGNN-Voltage.png" alt="GATGNN-VOLTAGE" width="400"/>
